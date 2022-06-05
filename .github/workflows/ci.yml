@@ -24,7 +24,7 @@ jobs:
           - jammy # Ubuntu 22.04 LTS
           - bullseye # Debian 11
         TYPE:
-          # - minimal
+          - minimal
           - cli
           - desktop
         exclude:
