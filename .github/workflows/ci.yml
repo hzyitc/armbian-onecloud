@@ -39,7 +39,7 @@ jobs:
             UBOOT_TAG=$UBOOT_TAG
             ARMBIAN_SHA=$ARMBIAN_SHA
           EOF
-          echo "::set-output name=env::$(cat $GITHUB_ENV | base64 -w 0)"
+          echo "env=$(cat $GITHUB_ENV | base64 -w 0)" >>$GITHUB_OUTPUT
 
       - name: Show repositories information
         run: |
