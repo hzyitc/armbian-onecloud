@@ -11,6 +11,7 @@ on:
 env:
   SCRIPT_REPO: ${{ github.repository }}
   SCRIPT_REF: ${{ github.ref_name }}
+  SCRIPT_PATH: my-script
   UBOOT_REPO: hzyitc/u-boot-onecloud
   UBOOT_RELEASE: latest
   UBOOT_BURNIMG: eMMC.burn.img
@@ -152,11 +153,19 @@ jobs:
           repository: ${{ env.ARMBIAN_REPO }}
           ref: ${{ env.ARMBIAN_SHA }}
 
-      - name: "Apply patch #4077"
+      - name: Checkout script repo
+        uses: actions/checkout@v3
+        with:
+          repository: ${{ env.SCRIPT_REPO }}
+          ref: ${{ env.SCRIPT_REF }}
+          path: ${{ env.SCRIPT_PATH }}
+
+      - name: "Apply patches"
         run: |
-          curl -L -O "https://github.com/armbian/build/pull/4077.patch"
-          for file in *.patch; do
-            patch --batch -p1 -N <"$file"
+          test -d "${SCRIPT_PATH}/patches" || exit 0
+
+          for p in ${SCRIPT_PATH}/patches/*.patch; do
+            git apply "$p"
           done
 
       - name: Download debs

@@ -1,0 +1,36 @@
+From 6d40a782824cdc107731ec650cbf6869052c09c5 Mon Sep 17 00:00:00 2001
+From: hzy <h1260071766@126.com>
+Date: Tue, 16 Aug 2022 00:47:57 +0800
+Subject: [PATCH] Keep empty line in armbianEnv.txt
+
+---
+ .../common/usr/lib/armbian/armbian-hardware-optimization | 9 +--------
+ 1 file changed, 1 insertion(+), 8 deletions(-)
+
+diff --git a/packages/bsp/common/usr/lib/armbian/armbian-hardware-optimization b/packages/bsp/common/usr/lib/armbian/armbian-hardware-optimization
+index ed7e9070537..b1c0e9fc433 100755
+--- a/packages/bsp/common/usr/lib/armbian/armbian-hardware-optimization
++++ b/packages/bsp/common/usr/lib/armbian/armbian-hardware-optimization
+@@ -365,12 +365,6 @@ add_usb_storage_quirks() {
+ 	# check for /boot/armbianEnv.txt existence
+ 	[ -f /boot/armbianEnv.txt ] || return
+ 
+-	# cleanup. add LF. This prevents adding parameters to the same line
+-	echo "" >> /boot/armbianEnv.txt;  sed -i '/^$/d;$G' /boot/armbianEnv.txt; sed -i '/^$/d;$G' /boot/armbianEnv.txt
+-
+-	# cleanup. remove empty lines in the middle
+-	sed -i '/^$/d' /boot/armbianEnv.txt
+-
+ 	# preserve old contents if existent
+ 	TMPFILE=$(mktemp /tmp/${0##*/}.XXXXXX)
+ 	trap "sleep 1 ; rm \"${TMPFILE}\" ; exit 0" 0 1 2 3 15
+@@ -390,8 +384,7 @@ add_usb_storage_quirks() {
+ 	done
+ 
+ 	read USBQUIRKS <${TMPFILE}
+-	sed -i '/^usbstoragequirks/d' /boot/armbianEnv.txt
+-	echo "usbstoragequirks=${USBQUIRKS}" >>/boot/armbianEnv.txt
++	sed -i "s/^usbstoragequirks=.*/usbstoragequirks=${USBQUIRKS}/" /boot/armbianEnv.txt
+ 	sync &
+ 	if [ -f /sys/module/usb_storage/parameters/quirks ]; then
+ 		echo ${USBQUIRKS} >/sys/module/usb_storage/parameters/quirks
