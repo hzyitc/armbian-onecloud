@@ -180,10 +180,10 @@ echo "Generating burnable image..."
 echo -n "sha1sum $(sha1sum burn/boot.simg | awk '{print $1}')" >burn/boot.VERIFY
 echo -n "sha1sum $(sha1sum burn/rootfs.simg | awk '{print $1}')" >burn/rootfs.VERIFY
 cat <<EOF >>burn/commands.txt
-	PARTITION:boot:sparse:boot.simg
-	VERIFY:boot:normal:boot.VERIFY
-	PARTITION:rootfs:sparse:rootfs.simg
-	VERIFY:rootfs:normal:rootfs.VERIFY
+PARTITION:boot:sparse:boot.simg
+VERIFY:boot:normal:boot.VERIFY
+PARTITION:rootfs:sparse:rootfs.simg
+VERIFY:rootfs:normal:rootfs.VERIFY
 EOF
 prefix=$(ls output/images/*.img | sed 's/\.img$//')
 burnimg=${prefix}.burn.img
