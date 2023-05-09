@@ -127,17 +127,17 @@ if [ "$SKIP_PATCH" = false ];then
 	done
 	rm *.patch
 fi
-
-echo "Building dtb/headers/image debs..."
-./compile.sh kernel \
-	ALLOW_ROOT=yes \
-	BOARD=onecloud \
-	BRANCH=$CHOOSED_BRANCH \
-	EXPERT=yes \
-	USE_CCACHE=no
-mv output/debs/* $OUTPUT_DIR/debs
-rm -rf output
-echo "Done."
+# Removed - Building image will also build these packages.
+# echo "Building dtb/headers/image debs..."
+# ./compile.sh kernel \
+# 	ALLOW_ROOT=yes \
+# 	BOARD=onecloud \
+# 	BRANCH=$CHOOSED_BRANCH \
+# 	EXPERT=yes \
+# 	USE_CCACHE=no
+# mv output/debs/* $OUTPUT_DIR/debs
+# rm -rf output
+# echo "Done."
 
 echo "Building image..."
 ./compile.sh build \
@@ -156,6 +156,8 @@ echo "Building image..."
 	CLEAN_LEVEL= \
 	USE_CCACHE=no \
 	COMPRESS_OUTPUTIMAGE=img
+
+mv output/debs/* $OUTPUT_DIR/debs
 
 if [ "$NOT_CREATE_BURNABLE" = false ];then
 
