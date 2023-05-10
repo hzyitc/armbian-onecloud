@@ -26,7 +26,7 @@ ARMBIAN_REPO=armbian/build
 ARMBIAN_REF=main
 DESKTOP_ENVIRONMENT=xfce
 DESKTOP_ENVIRONMENT_CONFIG_NAME=config_base
-DESKTOP_APPGROUPS_SELECTED=""
+DESKTOP_APPGROUPS_SELECTED=
 PATCHES=(4077 5076 5082)
 AMLIMG_VERSION="v0.3.1"
 
@@ -36,6 +36,7 @@ RELEASE=(jammy,bullseye,sid)
 TYPE=(minimal,cli,desktop)
 
 # Default choices...
+INTERACTIVE=false
 CHOOSED_BRANCH=current
 CHOOSED_RELEASE=jammy
 CHOOSED_TYPE=minimal
@@ -48,7 +49,7 @@ OUTPUT_DIR=$(pwd)/build_onecloud/dist
 # Show usages...
 usage(){
 cat << EOF
-Usage: $0 
+Usage: $0 [OPTION]
 -h,--help: Show help infomation
 -b,--branch: Branch to be built, choose from ${BRANCH[*]}. Default is $CHOOSED_BRANCH.
 -n,--no-burnable-images: Don't Create burnable images. Default is $NOT_CREATE_BURNABLE.
@@ -60,17 +61,96 @@ If you use this option, the script will no longer clone the source code from $AR
  for example, config/kernel/xxx.config. Default is $LOCAL_REPO_ADDR.
 -s,--skip-patch: Skip apply patch to source code. Default is $SKIP_PATCH.
 -o,--output-dir: specify a directory to storage artifacts. Default is $OUTPUT_DIR.
+-i,--interactive: use dialog to ask user for build args.
 example: ./build.sh -b current -r jammy -t minimal
 EOF
 }
+interactive(){
+echo "Installing Dialog...."
+sudo sudo apt-get -qqqqq update && apt-get -qqqqq install dialog -y
+dialog --title "Onecloud Build" --msgbox "Now this script will guide you to build your armbian image for onecloud." 20 50
+if dialog --title "Build from local"  --defaultno --yesno "Do you want to build from local repo?" 10 30; then
+SKIP_CLONE=true
+dialog --title "Select or input yout repo position" --fselect / 7 60 2> /tmp/dialog_onecloud.txt
+_LOCAL_REPO_ADDR=$(cat /tmp/dialog_onecloud.txt)
+if [ -n $_LOCAL_REPO_ADDR ];then
+LOCAL_REPO_ADDR=$_LOCAL_REPO_ADDR
+fi
+if dialog --title "Apply Patch" --defaultno --yesno "Do you want to Apply patches automatically?" 10 30; then
+SKIP_PATCH=true
+fi
+fi
 
+if dialog --title "Build Burnable Images" --yesno "Do you want to build Burnable images?" 10 30; then
+NOT_CREATE_BURNABLE=false
+else
+NOT_CREATE_BURNABLE=true
+fi
+
+if dialog --title "Select output directory" --defaultno --yesno "Do you want to select a output directory, default is $OUTPUT_DIR?" 10 60; then
+dialog --title "Select output directory" --fselect / 7 60 2> /tmp/dialog_onecloud.txt
+_OUTPUT_DIR=$(cat /tmp/dialog_onecloud.txt)
+if [ -n $_OUTPUT_DIR ];then
+OUTPUT_DIR=$_OUTPUT_DIR
+fi
+fi
+
+dialog --title "Select build branch" --clear --menu \
+    "Please choose branch to be built, default is $CHOOSED_BRANCH: " 16 51 3 \
+    current "Build branch current" \
+    edge "Build branch edge" 2>/tmp/dialog_onecloud.txt
+_CHOOSED_BRANCH=$(cat /tmp/dialog_onecloud.txt)
+if [ -n $_CHOOSED_BRANCH ];then
+CHOOSED_BRANCH=$_CHOOSED_BRANCH
+fi
+
+dialog --title "Select build release" --clear --menu \
+    "Please choose release to be built, default is $CHOOSED_RELEASE: " 16 51 3 \
+    jammy "Build release jammy" \
+    bullseye "Build release bullseye" \
+	sid "Build release sid" 2>/tmp/dialog_onecloud.txt
+_CHOOSED_RELEASE=$(cat /tmp/dialog_onecloud.txt)
+if [ -n $_CHOOSED_RELEASE ];then
+CHOOSED_RELEASE=$_CHOOSED_RELEASE
+fi
+
+dialog --title "Select build type" --clear --menu \
+    "Please choose type to be built, default is $CHOOSED_TYPE: " 16 51 3 \
+    minimal "Build type minimal" \
+    cli "Build type cli" \
+	desktop "Build type desktop" 2>/tmp/dialog_onecloud.txt
+_CHOOSED_TYPE=$(cat /tmp/dialog_onecloud.txt)
+if [ -n $_CHOOSED_TYPE ];then
+CHOOSED_TYPE=$_CHOOSED_TYPE
+fi
+if [[ $CHOOSED_TYPE == "desktop" ]];then
+if dialog --title "ADVANCED" --defaultno --yesno "Do you want to specify other configs, including DESKTOP_ENVIRONMENT,DESKTOP_ENVIRONMENT_CONFIG_NAME,DESKTOP_APPGROUPS_SELECTED?" 10 60; then
+USER_INPUT=$(dialog --title "Advanced option" \
+                    --output-fd 1 \
+                    --output-separator "," \
+                    --form "Input configs:" 12 80 4  \
+                        "DESKTOP_ENVIRONMENT:"  1  1 "$DESKTOP_ENVIRONMENT" 1  40  25  0  \
+                        "Full DESKTOP_ENVIRONMENT_CONFIG_NAME:" 2  1 "$DESKTOP_ENVIRONMENT_CONFIG_NAME" 2  40  25  0  \
+                        "DESKTOP_APPGROUPS_SELECTED:"  3  1 "$DESKTOP_APPGROUPS_SELECTED" 3  40  25  0)
+RET_ARRAY=($USER_INPUT)
+if [ -n $RET_ARRAY[0] ];then
+DESKTOP_ENVIRONMENT=$RET_ARRAY[0]
+fi
+if [ -n $RET_ARRAY[1] ];then
+DESKTOP_ENVIRONMENT_CONFIG_NAME=$RET_ARRAY[1]
+fi
+if [ -n $RET_ARRAY[2] ];then
+DESKTOP_APPGROUPS_SELECTED=$RET_ARRAY[2]
+fi
+fi
+fi
+dialog --title "Onecloud Build" --msgbox "Configs collected. Press Enter to start building!" 20 50
+# echo "ddd"
+dialog --clear
+rm -rf /tmp/dialog_onecloud.txt
+}
 # Run build
 run_build(){
-# Check if running with root...
-if [ `id -u` -ne 0 ];then
-	echo "Plz Use sudo to run this script"
-    exit 0
-fi
 
 mkdir -p $LOCAL_REPO_ADDR
 mkdir -p $OUTPUT_DIR/debs
@@ -214,7 +294,7 @@ exit 0
 
 
 # Fetch user options
-OPTIONS=`getopt -o hso:b:r:t:l: --long help,skip-patch,branch:,release:,type:,local-repo-addr:,output-dir: -n $0 -- "$@"`
+OPTIONS=`getopt -o hsio:b:r:t:l: --long help,skip-patch,interactive,branch:,release:,type:,local-repo-addr:,output-dir: -n $0 -- "$@"`
 if [ $? != 0 ];then
 	usage
 	exit 1
@@ -223,9 +303,6 @@ eval set -- "${OPTIONS}"
 while true
 do
     case $1 in
-		-h|--help)
-            usage
-            ;;
         -b|--branch)
             CHOOSED_BRANCH=$2
 			[[ ${BRANCH[@]/${CHOOSED_BRANCH}/} != ${BRANCH[@]} ]] && echo "Branch $CHOOSED_BRANCH is choosed." || (echo "You should choose from ${BRANCH[*]}." && exit 1)
@@ -250,15 +327,21 @@ do
 			fi
             shift
             ;;
+		-o|--output-dir)
+            OUTPUT_DIR=$2
+			shift
+            ;;
+		-h|--help)
+            usage
+            ;;
 		-s|--skip-patch)
             SKIP_PATCH=true
             ;;
-		-o|--output-dir)
-            OUTPUT_DIR=$2
-            ;;
 		-n|--no-burnable-images)
-            $NOT_CREATE_BURNABLE=true
-            shift
+            NOT_CREATE_BURNABLE=true
+            ;;
+		-i|--interactive)
+            INTERACTIVE=true
             ;;
         --)
             shift
@@ -272,4 +355,13 @@ do
 shift
 done
 # usage
+
+# Check if running with root...
+if [ `id -u` -ne 0 ];then
+	echo "Plz Use sudo to run this script"
+    exit 0
+fi
+if [ "$INTERACTIVE" = true ];then
+interactive
+fi
 run_build
